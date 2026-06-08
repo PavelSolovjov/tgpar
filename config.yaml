@@ -20,6 +20,12 @@ criteria:
     - "руководитель проектов"
     - "менеджер проектов"
     - "деливери менеджер"
+    - "pm"
+    - "project lead"
+    - "program manager"
+    - "delivery lead"
+    - "technical project manager"
+    - "it project manager"
   domains:
     - "fintech"
     - "crypto"
