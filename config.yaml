@@ -9,6 +9,17 @@ source_channels:
   - "@cryptoheadhunter"
   - "@workingincrypto"
   - "@job_web3"
+  - "@job_for_relocation"
+  - "@freelance_joob"
+  - "@cyprusithr"
+  - "@normrabota"
+  - "@DevZoneGD"
+  - "@product_jobs"
+  - "@hot_itjobs"
+  - "@jobs_in_it_remoute"
+  - "@dddwork"
+  - "@careerstation_pm"
+  - "@jobs_it"
 
 # The target channel where matching vacancies will be posted.
 # The bot must be an admin there.
