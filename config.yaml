@@ -1,0 +1,43 @@
+poll_interval_seconds: 60
+recent_messages_limit: 50
+dry_run: false
+
+# Add public usernames like "@some_channel" or private invite/accessible channel IDs.
+source_channels:
+  - "@example_jobs_channel"
+
+# The target channel where matching vacancies will be posted.
+# The bot must be an admin there if forward_with_user is false.
+destination_channel: "@your_target_channel"
+
+# If true, forwards with the user client instead of posting a bot copy.
+# The user account must have posting rights in destination_channel.
+forward_with_user: false
+
+criteria:
+  roles:
+    - "project manager"
+    - "delivery manager"
+    - "руководитель проектов"
+    - "менеджер проектов"
+    - "деливери менеджер"
+  domains:
+    - "fintech"
+    - "crypto"
+    - "web3"
+    - "payments"
+    - "blockchain"
+    - "финтех"
+    - "крипто"
+    - "платежи"
+    - "блокчейн"
+  levels:
+    - "middle"
+    - "senior"
+    - "мидл"
+    - "сеньор"
+
+llm:
+  enabled: true
+  temperature: 0
+  max_input_chars: 6000

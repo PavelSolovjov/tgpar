@@ -1,0 +1,15 @@
+[Unit]
+Description=Telegram Jobs Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/telegram-jobs-monitor
+EnvironmentFile=/opt/telegram-jobs-monitor/.env
+ExecStart=/opt/telegram-jobs-monitor/.venv/bin/tg-jobs-monitor
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
