@@ -20,6 +20,23 @@ source_channels:
   - "@dddwork"
   - "@careerstation_pm"
   - "@jobs_it"
+  - "@jobs_project_managers"
+  - "@youritjob"
+  - "@myresume_ru"
+  - "@jobs"
+  - "@freelancce"
+  - "@projects_jobs_feed"
+  - "@datajobschannel"
+  - "@workk_onstream"
+  - "@josad_software"
+  - "@rusukrjobs"
+  - "@revacancy_global"
+  - "@needdev"
+  - "@work_for_top"
+  - "@jobinspb"
+  - "@workayte"
+  - "@frelanserr"
+  - "@peersglobaljobs"
 
 # The target channel where matching vacancies will be posted.
 # The bot must be an admin there.
