@@ -59,6 +59,8 @@ source_channels:
 destination_channel: "@vakansiiprojectov"
 
 criteria:
+  require_domains: false
+  require_levels: false
   roles:
     - "project manager"
     - "delivery manager"

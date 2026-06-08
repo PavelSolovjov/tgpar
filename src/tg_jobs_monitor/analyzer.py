@@ -47,15 +47,19 @@ class VacancyAnalyzer:
             "task": "Analyze a Telegram post and decide whether it is a matching job vacancy.",
             "rules": [
                 "Do not invent missing information.",
-                "Accept only if the post is a job vacancy and matches role, domain, and level.",
-                "If the level is not explicitly stated but the text clearly implies middle/senior experience, explain that inference.",
-                "Reject junior, intern, lead-only, product-only, sales-only, recruiter-only, and unrelated posts.",
+                "Accept only if the post is a job vacancy and matches the role criteria.",
+                "Domain criteria are required only when require_domains is true.",
+                "Level criteria are required only when require_levels is true.",
+                "Do not reject solely because the domain or level is missing when the corresponding requirement is false.",
+                "Reject junior, intern, product-only, sales-only, recruiter-only, and unrelated posts.",
                 "Return only valid JSON.",
             ],
             "criteria": {
                 "roles": criteria.roles,
                 "domains": criteria.domains,
                 "levels": criteria.levels,
+                "require_domains": criteria.require_domains,
+                "require_levels": criteria.require_levels,
             },
             "required_json_schema": {
                 "accepted": "boolean",
@@ -115,16 +119,18 @@ class VacancyAnalyzer:
         role = find_match(normalized, self.config.criteria.roles)
         domain = find_match(normalized, self.config.criteria.domains)
         level = find_match(normalized, self.config.criteria.levels)
-        accepted = bool(is_vacancy and role and domain and level)
+        domain_ok = bool(domain) or not self.config.criteria.require_domains
+        level_ok = bool(level) or not self.config.criteria.require_levels
+        accepted = bool(is_vacancy and role and domain_ok and level_ok)
 
         missing = []
         if not is_vacancy:
             missing.append("не похоже на вакансию")
         if not role:
             missing.append("нет подходящей роли")
-        if not domain:
+        if self.config.criteria.require_domains and not domain:
             missing.append("нет подходящей сферы")
-        if not level:
+        if self.config.criteria.require_levels and not level:
             missing.append("нет middle/senior уровня")
 
         reason = (
@@ -151,6 +157,12 @@ def normalize(text: str) -> str:
 
 def find_match(normalized_text: str, terms: list[str]) -> Optional[str]:
     for term in terms:
-        if normalize(term) in normalized_text:
+        normalized_term = normalize(term)
+        if len(normalized_term) <= 3:
+            pattern = rf"(?<!\w){re.escape(normalized_term)}(?!\w)"
+            if re.search(pattern, normalized_text):
+                return term
+            continue
+        if normalized_term in normalized_text:
             return term
     return None

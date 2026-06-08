@@ -13,6 +13,8 @@ class CriteriaConfig(BaseModel):
     roles: list[str]
     domains: list[str]
     levels: list[str]
+    require_domains: bool = True
+    require_levels: bool = True
 
 
 class LlmConfig(BaseModel):
