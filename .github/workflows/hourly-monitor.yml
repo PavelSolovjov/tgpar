@@ -1,0 +1,52 @@
+name: Hourly Telegram jobs monitor
+
+on:
+  schedule:
+    - cron: "14 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: hourly-telegram-jobs-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4.1-mini' }}
+      CONFIG_PATH: config.yaml
+      DATABASE_PATH: data/processed.sqlite3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Restore processed database
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: processed-db-${{ github.run_id }}
+          restore-keys: |
+            processed-db-
+
+      - name: Install package
+        run: pip install .
+
+      - name: Run monitor once
+        run: tg-jobs-monitor --once
+
+      - name: Save processed database
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: processed-db-${{ github.run_id }}

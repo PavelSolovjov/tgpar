@@ -36,6 +36,27 @@ tg-jobs-monitor
 
 При первом запуске существующие посты будут обработаны и сохранены в SQLite, но не опубликованы, если `publish_on_first_run: false`.
 
+## Постоянный запуск через GitHub Actions
+
+Workflow лежит в `.github/workflows/hourly-monitor.yml` и запускает монитор раз в час по расписанию `14 * * * *` UTC.
+
+Перед включением добавьте в GitHub repository secrets:
+
+- `TELEGRAM_BOT_TOKEN`: token бота от `@BotFather`.
+- `OPENAI_API_KEY`: необязательно, если нужен LLM-анализ.
+
+Опционально можно добавить repository variable:
+
+- `OPENAI_MODEL`: например `gpt-4.1-mini`.
+
+SQLite-база дедупликации хранится в GitHub Actions cache (`data/processed.sqlite3`). Первый запуск помечает уже видимые старые посты как обработанные и не публикует их, если `publish_on_first_run: false`.
+
+Запустить вручную можно в GitHub:
+
+```text
+Actions -> Hourly Telegram jobs monitor -> Run workflow
+```
+
 ## Постоянный запуск через Docker
 
 На сервере:
