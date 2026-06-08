@@ -37,6 +37,22 @@ source_channels:
   - "@workayte"
   - "@frelanserr"
   - "@peersglobaljobs"
+  - "@getitrussia"
+  - "@tproger_official"
+  - "@myjobit"
+  - "@forallmobile"
+  - "@geekjobs"
+  - "@jc_it"
+  - "@careerspace"
+  - "@hcareers_jobs"
+  - "@productjobgo"
+  - "@product_project_hr_geeklink"
+  - "@hh_vacancy_product_project"
+  - "@hireproproduct"
+  - "@products_jobs"
+  - "@gile_jobs"
+  - "@projects_jobs"
+  - "@forproducts"
 
 # The target channel where matching vacancies will be posted.
 # The bot must be an admin there.
