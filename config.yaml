@@ -73,21 +73,8 @@ criteria:
     - "delivery lead"
     - "technical project manager"
     - "it project manager"
-  domains:
-    - "fintech"
-    - "crypto"
-    - "web3"
-    - "payments"
-    - "blockchain"
-    - "финтех"
-    - "крипто"
-    - "платежи"
-    - "блокчейн"
-  levels:
-    - "middle"
-    - "senior"
-    - "мидл"
-    - "сеньор"
+  domains: []
+  levels: []
 
 llm:
   enabled: true
