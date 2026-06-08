@@ -1,21 +1,19 @@
 # Telegram Jobs Monitor MVP
 
-MVP читает новые посты из заданных Telegram-каналов, определяет вакансии Project/Delivery Manager в fintech/crypto/web3/payments/blockchain на middle/senior уровне и отправляет подходящие посты в целевой канал.
+MVP читает новые посты из публичных Telegram-каналов через веб-страницы `https://t.me/s/<channel>`, определяет вакансии Project/Delivery Manager в fintech/crypto/web3/payments/blockchain на middle/senior уровне и отправляет подходящие посты в целевой канал.
 
-## Важное ограничение Telegram
+## Важное ограничение
 
-Обычный Telegram Bot API не может читать произвольные каналы-источники. Поэтому проект использует:
+Этот режим не требует `api_id` и `api_hash` с `my.telegram.org`, но работает только с публичными каналами, доступными по `https://t.me/s/<channel>`.
 
-- `Telethon` user session для чтения каналов, к которым имеет доступ ваш Telegram-аккаунт.
-- Telegram bot token для публикации в целевой канал, если `forward_with_user: false`.
+Для публикации подходящих вакансий нужен обычный Telegram bot token. Бота нужно добавить админом в целевой канал.
 
 ## Быстрый запуск
 
 Нужен Python 3.9 или новее.
 
-1. Создайте Telegram API credentials: `api_id` и `api_hash` на <https://my.telegram.org/apps>.
-2. Создайте бота через `@BotFather` и добавьте его админом в целевой канал.
-3. Установите зависимости:
+1. Создайте бота через `@BotFather` и добавьте его админом в целевой канал.
+2. Установите зависимости:
 
 ```bash
 python3 -m venv .venv
@@ -23,20 +21,20 @@ source .venv/bin/activate
 pip install .
 ```
 
-4. Создайте `.env`:
+3. Создайте `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-5. Заполните `.env` и `config.yaml`.
-6. Запустите:
+4. Заполните `.env` и `config.yaml`.
+5. Запустите:
 
 ```bash
 tg-jobs-monitor
 ```
 
-При первом запуске Telethon попросит код входа в Telegram для user session.
+При первом запуске существующие посты будут обработаны и сохранены в SQLite, но не опубликованы, если `publish_on_first_run: false`.
 
 ## Постоянный запуск через Docker
 
@@ -48,7 +46,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Контейнер использует `restart: unless-stopped`, хранит SQLite-базу в `./data` и Telegram-сессии в `./sessions`.
+Контейнер использует `restart: unless-stopped` и хранит SQLite-базу в `./data`.
 
 ## Постоянный запуск через systemd
 
@@ -101,5 +99,5 @@ SQLite хранит:
 - `criteria.roles/domains/levels`: критерии фильтрации.
 - `poll_interval_seconds`: период проверки.
 - `recent_messages_limit`: сколько последних сообщений смотреть на первом проходе.
+- `publish_on_first_run`: публиковать ли подходящие старые посты при первом запуске.
 - `dry_run`: логировать решения без отправки.
-- `forward_with_user`: настоящая пересылка через user client вместо публикации копии ботом.

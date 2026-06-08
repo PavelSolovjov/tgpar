@@ -7,7 +7,7 @@ import logging
 from tg_jobs_monitor.analyzer import VacancyAnalyzer
 from tg_jobs_monitor.settings import load_config
 from tg_jobs_monitor.storage import Storage
-from tg_jobs_monitor.telegram_monitor import TelegramJobsMonitor
+from tg_jobs_monitor.web_monitor import TelegramWebJobsMonitor
 
 
 def main() -> None:
@@ -26,7 +26,7 @@ def main() -> None:
     env, config = load_config()
     storage = Storage(env.database_path)
     analyzer = VacancyAnalyzer(env, config)
-    monitor = TelegramJobsMonitor(env, config, storage, analyzer)
+    monitor = TelegramWebJobsMonitor(env, config, storage, analyzer)
     try:
         if args.once:
             asyncio.run(monitor.run_once())

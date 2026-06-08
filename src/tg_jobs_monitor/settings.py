@@ -24,10 +24,10 @@ class LlmConfig(BaseModel):
 class AppConfig(BaseModel):
     poll_interval_seconds: int = 60
     recent_messages_limit: int = 50
+    publish_on_first_run: bool = False
     dry_run: bool = False
     source_channels: list[str]
     destination_channel: str
-    forward_with_user: bool = False
     criteria: CriteriaConfig
     llm: LlmConfig = Field(default_factory=LlmConfig)
 
@@ -35,15 +35,11 @@ class AppConfig(BaseModel):
 class EnvSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    telegram_api_id: int
-    telegram_api_hash: str
     telegram_bot_token: Optional[str] = None
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4.1-mini"
     config_path: Path = Path("config.yaml")
     database_path: Path = Path("data/processed.sqlite3")
-    telegram_session_name: str = "sessions/source_reader"
-    bot_session_name: str = "sessions/destination_bot"
 
 
 def load_config() -> tuple[EnvSettings, AppConfig]:
