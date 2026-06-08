@@ -1,4 +1,4 @@
-poll_interval_seconds: 60
+poll_interval_seconds: 3600
 recent_messages_limit: 50
 publish_on_first_run: false
 dry_run: false
