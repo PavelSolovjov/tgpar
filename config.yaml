@@ -11,7 +11,7 @@ source_channels:
 
 # The target channel where matching vacancies will be posted.
 # The bot must be an admin there.
-destination_channel: "@your_target_channel"
+destination_channel: "@vakansiiprojectov"
 
 criteria:
   roles:
