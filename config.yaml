@@ -53,6 +53,7 @@ source_channels:
   - "@gile_jobs"
   - "@projects_jobs"
   - "@forproducts"
+  - "@testingbotchannel222"
 
 # The target channel where matching vacancies will be posted.
 # The bot must be an admin there.
