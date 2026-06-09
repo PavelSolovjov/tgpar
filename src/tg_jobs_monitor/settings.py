@@ -26,6 +26,8 @@ class LlmConfig(BaseModel):
 class AppConfig(BaseModel):
     poll_interval_seconds: int = 60
     recent_messages_limit: int = 50
+    request_delay_seconds: float = 0
+    request_delay_jitter_seconds: float = 0
     publish_on_first_run: bool = False
     dry_run: bool = False
     source_channels: list[str]

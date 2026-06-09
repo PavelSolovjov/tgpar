@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import random
 from typing import Optional
 
 from tg_jobs_monitor.analyzer import AnalysisResult, VacancyAnalyzer
@@ -57,7 +58,12 @@ class TelegramWebJobsMonitor:
         if not self.config.dry_run and self.publisher is None:
             raise RuntimeError("TELEGRAM_BOT_TOKEN is required unless dry_run is true")
 
-        for source in self.config.source_channels:
+        for index, source in enumerate(self.config.source_channels):
+            if index > 0:
+                delay = self._next_request_delay()
+                if delay > 0:
+                    logger.info("Sleeping %.2fs before polling %s", delay, source)
+                    await asyncio.sleep(delay)
             try:
                 await self._poll_source(source)
             except Exception:
@@ -150,6 +156,13 @@ class TelegramWebJobsMonitor:
                 reason=reason,
             )
         )
+
+    def _next_request_delay(self) -> float:
+        base = max(0.0, self.config.request_delay_seconds)
+        jitter = max(0.0, self.config.request_delay_jitter_seconds)
+        if jitter == 0:
+            return base
+        return max(0.0, base + random.uniform(0, jitter))
 
 
 def hash_text(text: str) -> str:

@@ -1,5 +1,7 @@
 poll_interval_seconds: 3600
 recent_messages_limit: 50
+request_delay_seconds: 2.0
+request_delay_jitter_seconds: 1.0
 publish_on_first_run: false
 dry_run: false
 
@@ -54,6 +56,22 @@ source_channels:
   - "@projects_jobs"
   - "@forproducts"
   - "@testingbotchannel222"
+  - "@jobs_pm"
+  - "@paymentcardjobs"
+  - "@stablegram"
+  - "@unicastjobs"
+  - "@web3hiring"
+  - "@cryptojobslist"
+  - "@jobstash"
+  - "@remoteweb3jobs"
+  - "@Social3Jobs"
+  - "@DefinitiveWeb3"
+  - "@laborx"
+  - "@remotejobss"
+  - "@findmyremote"
+  - "@linkedinremotejobs"
+  - "@cryptojobs"
+  - "@cryptoworldwidejobs"
 
 # The target channel where matching vacancies will be posted.
 # The bot must be an admin there.
