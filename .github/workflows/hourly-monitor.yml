@@ -2,7 +2,7 @@ name: Hourly Telegram jobs monitor
 
 on:
   schedule:
-    - cron: "14 * * * *"
+    - cron: "14 5-20 * * *"
   workflow_dispatch:
 
 concurrency:

@@ -38,7 +38,7 @@ tg-jobs-monitor
 
 ## Постоянный запуск через GitHub Actions
 
-Workflow лежит в `.github/workflows/hourly-monitor.yml` и запускает монитор раз в час по расписанию `14 * * * *` UTC.
+Workflow лежит в `.github/workflows/hourly-monitor.yml` и запускает монитор раз в час по расписанию `14 5-20 * * *` UTC, то есть примерно с `08:14` до `23:14` по Москве.
 
 Перед включением добавьте в GitHub repository secrets:
 
