@@ -102,7 +102,7 @@ llm:
   max_input_chars: 6000
 
 hh:
-  enabled: true
+  enabled: false
   per_page: 20
   pages: 1
   request_delay_seconds: 0.5
