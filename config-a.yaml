@@ -1,0 +1,69 @@
+poll_interval_seconds: 3600
+recent_messages_limit: 25
+request_delay_seconds: 1.0
+request_delay_jitter_seconds: 0.5
+publish_on_first_run: false
+dry_run: false
+
+# Public Telegram channel usernames. The scraper reads https://t.me/s/<channel>.
+source_channels:
+  - "@opento_crypto"
+  - "@workingincrypto"
+  - "@job_for_relocation"
+  - "@cyprusithr"
+  - "@DevZoneGD"
+  - "@hot_itjobs"
+  - "@dddwork"
+  - "@jobs_it"
+  - "@youritjob"
+  - "@jobs"
+  - "@projects_jobs_feed"
+  - "@workk_onstream"
+  - "@rusukrjobs"
+  - "@needdev"
+  - "@jobinspb"
+  - "@frelanserr"
+  - "@getitrussia"
+  - "@myjobit"
+  - "@geekjobs"
+  - "@careerspace"
+  - "@productjobgo"
+  - "@hh_vacancy_product_project"
+  - "@products_jobs"
+  - "@projects_jobs"
+  - "@testingbotchannel222"
+  - "@paymentcardjobs"
+  - "@unicastjobs"
+  - "@cryptojobslist"
+  - "@remoteweb3jobs"
+  - "@DefinitiveWeb3"
+  - "@remotejobss"
+  - "@linkedinremotejobs"
+  - "@cryptoworldwidejobs"
+
+# The target channel where matching vacancies will be posted.
+# The bot must be an admin there.
+destination_channel: "@vakansiiprojectov"
+
+criteria:
+  require_domains: false
+  require_levels: false
+  roles:
+    - "project manager"
+    - "delivery manager"
+    - "руководитель проектов"
+    - "менеджер проектов"
+    - "деливери менеджер"
+    - "pm"
+    - "project lead"
+    - "program manager"
+    - "delivery lead"
+    - "technical project manager"
+    - "it project manager"
+  domains: []
+  levels: []
+
+llm:
+  enabled: true
+  temperature: 0
+  max_input_chars: 6000

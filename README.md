@@ -38,7 +38,15 @@ tg-jobs-monitor
 
 ## Постоянный запуск через GitHub Actions
 
-Workflow лежит в `.github/workflows/hourly-monitor.yml` и запускает монитор раз в час по расписанию `14 5-20 * * *` UTC, то есть примерно с `08:14` до `23:14` по Москве.
+Для GitHub Actions используются два workflow:
+
+- `.github/workflows/hourly-monitor.yml` -> группа A, `CONFIG_PATH=config-a.yaml`
+- `.github/workflows/hourly-monitor-b.yml` -> группа B, `CONFIG_PATH=config-b.yaml`
+
+Обычно их удобно запускать внешним cron-триггером с разницей в 30 минут:
+
+- workflow A примерно в `08:14`, `09:14`, ... `23:14` по Москве
+- workflow B примерно в `08:44`, `09:44`, ... `23:44` по Москве
 
 Перед включением добавьте в GitHub repository secrets:
 
@@ -55,7 +63,8 @@ SQLite-база дедупликации хранится в GitHub Actions cach
 Запустить вручную можно в GitHub:
 
 ```text
-Actions -> Hourly Telegram jobs monitor -> Run workflow
+Actions -> Telegram jobs monitor A -> Run workflow
+Actions -> Telegram jobs monitor B -> Run workflow
 ```
 
 ## Постоянный запуск через Docker
@@ -125,3 +134,5 @@ SQLite хранит:
 - `recent_messages_limit`: сколько последних сообщений смотреть на первом проходе.
 - `publish_on_first_run`: публиковать ли подходящие старые посты при первом запуске.
 - `dry_run`: логировать решения без отправки.
+
+Для split-запуска через GitHub Actions используются `config-a.yaml` и `config-b.yaml` с теми же параметрами, но разными группами каналов.
