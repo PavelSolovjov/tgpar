@@ -111,7 +111,7 @@ class TelegramWebJobsMonitor:
 
         forwarded_message_id = None
         if result.accepted and should_publish and not self.config.dry_run:
-            forwarded_message_id = await self._publish_match(post, reason)
+            forwarded_message_id = await self._publish_match(post, reason, result.resume_summary)
 
         self.storage.save(
             ProcessedRecord(
@@ -124,11 +124,22 @@ class TelegramWebJobsMonitor:
             )
         )
 
-    async def _publish_match(self, post: ScrapedPost, reason: str) -> Optional[int]:
+    async def _publish_match(
+        self,
+        post: ScrapedPost,
+        reason: str,
+        resume_summary: Optional[str],
+    ) -> Optional[int]:
         if self.publisher is None:
             return None
 
-        header = f"Подходящая вакансия\nИсточник: {post.source}\nПричина: {reason}\nСсылка: {post.url}"
+        sections = ["Подходящая вакансия"]
+        if resume_summary:
+            sections.append(f"Саммари: {resume_summary}")
+        sections.append(f"Источник: {post.source}")
+        sections.append(f"Причина: {reason}")
+        sections.append(f"Ссылка: {post.url}")
+        header = "\n".join(sections)
         return await self.publisher.send_text(
             self.config.destination_channel,
             f"{header}\n\n{post.text}",

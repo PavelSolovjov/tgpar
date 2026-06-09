@@ -40,6 +40,8 @@ class EnvSettings(BaseSettings):
     telegram_bot_token: Optional[str] = None
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4.1-mini"
+    resume_text: Optional[str] = None
+    resume_path: Path = Path("resume.md")
     config_path: Path = Path("config.yaml")
     database_path: Path = Path("data/processed.sqlite3")
 
@@ -50,3 +52,12 @@ def load_config() -> tuple[EnvSettings, AppConfig]:
     with env.config_path.open("r", encoding="utf-8") as file:
         raw_config: dict[str, Any] = yaml.safe_load(file) or {}
     return env, AppConfig.model_validate(raw_config)
+
+
+def load_resume_text(env: EnvSettings) -> Optional[str]:
+    if env.resume_text and env.resume_text.strip():
+        return env.resume_text.strip()
+    if env.resume_path.exists():
+        text = env.resume_path.read_text(encoding="utf-8").strip()
+        return text or None
+    return None

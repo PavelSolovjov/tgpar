@@ -8,7 +8,7 @@ from typing import Optional
 
 from openai import AsyncOpenAI
 
-from tg_jobs_monitor.settings import AppConfig, EnvSettings
+from tg_jobs_monitor.settings import AppConfig, EnvSettings, load_resume_text
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,8 @@ class AnalysisResult:
     matched_role: Optional[str] = None
     matched_domain: Optional[str] = None
     matched_level: Optional[str] = None
+    resume_summary: Optional[str] = None
+    resume_fit: Optional[str] = None
 
 
 class VacancyAnalyzer:
@@ -31,6 +33,7 @@ class VacancyAnalyzer:
         self.env = env
         self.config = config
         self.client = AsyncOpenAI(api_key=env.openai_api_key) if env.openai_api_key else None
+        self.resume_text = load_resume_text(env)
 
     async def analyze(self, text: str) -> AnalysisResult:
         if self.client and self.config.llm.enabled:
@@ -52,6 +55,7 @@ class VacancyAnalyzer:
                 "Level criteria are required only when require_levels is true.",
                 "Do not reject solely because the domain or level is missing when the corresponding requirement is false.",
                 "Reject junior, intern, product-only, sales-only, recruiter-only, and unrelated posts.",
+                "If resume_text is provided, compare the vacancy to the resume and write a short Russian summary.",
                 "Return only valid JSON.",
             ],
             "criteria": {
@@ -71,7 +75,10 @@ class VacancyAnalyzer:
                 "matched_role": "string or null",
                 "matched_domain": "string or null",
                 "matched_level": "string or null",
+                "resume_summary": "short Russian summary, 1-3 sentences, or null",
+                "resume_fit": "one of strong_fit, partial_fit, weak_fit, unknown, or null",
             },
+            "resume_text": self.resume_text,
             "post_text": trimmed_text,
         }
         response = await self.client.chat.completions.create(
@@ -101,6 +108,8 @@ class VacancyAnalyzer:
             matched_role=data.get("matched_role"),
             matched_domain=data.get("matched_domain"),
             matched_level=data.get("matched_level"),
+            resume_summary=data.get("resume_summary"),
+            resume_fit=data.get("resume_fit"),
         )
 
     def _analyze_with_keywords(self, text: str) -> AnalysisResult:
@@ -148,6 +157,8 @@ class VacancyAnalyzer:
             matched_role=role,
             matched_domain=domain,
             matched_level=level,
+            resume_summary=None,
+            resume_fit=None,
         )
 
 
