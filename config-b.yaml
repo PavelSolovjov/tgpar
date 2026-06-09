@@ -67,3 +67,6 @@ llm:
   enabled: true
   temperature: 0
   max_input_chars: 6000
+
+hh:
+  enabled: false

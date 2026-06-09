@@ -14,6 +14,7 @@ jobs:
     env:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      HH_USER_AGENT: ${{ secrets.HH_USER_AGENT }}
       RESUME_TEXT: ${{ secrets.RESUME_TEXT }}
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4.1-mini' }}
       CONFIG_PATH: config-a.yaml

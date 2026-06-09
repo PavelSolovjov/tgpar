@@ -100,3 +100,22 @@ llm:
   enabled: true
   temperature: 0
   max_input_chars: 6000
+
+hh:
+  enabled: true
+  per_page: 20
+  pages: 1
+  request_delay_seconds: 0.5
+  searches:
+    - source: "hh-project-manager"
+      text: "project manager"
+      area: 113
+    - source: "hh-delivery-manager"
+      text: "delivery manager"
+      area: 113
+    - source: "hh-launch-manager"
+      text: "launch manager"
+      area: 113
+    - source: "hh-ru-pm"
+      text: "менеджер проектов"
+      area: 113

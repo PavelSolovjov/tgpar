@@ -23,6 +23,20 @@ class LlmConfig(BaseModel):
     max_input_chars: int = 6000
 
 
+class HhSearchConfig(BaseModel):
+    source: str
+    text: str
+    area: Optional[int] = None
+
+
+class HhConfig(BaseModel):
+    enabled: bool = False
+    per_page: int = 20
+    pages: int = 1
+    request_delay_seconds: float = 0.0
+    searches: list[HhSearchConfig] = Field(default_factory=list)
+
+
 class AppConfig(BaseModel):
     poll_interval_seconds: int = 60
     recent_messages_limit: int = 50
@@ -34,6 +48,7 @@ class AppConfig(BaseModel):
     destination_channel: str
     criteria: CriteriaConfig
     llm: LlmConfig = Field(default_factory=LlmConfig)
+    hh: HhConfig = Field(default_factory=HhConfig)
 
 
 class EnvSettings(BaseSettings):
@@ -42,6 +57,7 @@ class EnvSettings(BaseSettings):
     telegram_bot_token: Optional[str] = None
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4.1-mini"
+    hh_user_agent: Optional[str] = None
     resume_text: Optional[str] = None
     resume_path: Path = Path("resume.md")
     config_path: Path = Path("config.yaml")
