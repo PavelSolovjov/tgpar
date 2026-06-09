@@ -106,6 +106,39 @@ hh:
   per_page: 20
   pages: 1
   request_delay_seconds: 0.5
+  min_salary_rur: 250000
+  require_remote: true
+  allowed_domain_keywords:
+    - "crypto"
+    - "web3"
+    - "fintech"
+    - "payments"
+    - "payment"
+    - "blockchain"
+    - "mobile"
+    - "ios"
+    - "android"
+    - "flutter"
+    - "react native"
+    - "мобильн"
+  excluded_grade_terms:
+    - "junior"
+    - "джуниор"
+    - "intern"
+    - "стажер"
+    - "стажировка"
+  excluded_company_keywords:
+    - "заказная разработка"
+    - "разработка на заказ"
+    - "аутсорс"
+    - "аутстафф"
+    - "outsource"
+    - "outsource company"
+    - "outstaff"
+    - "digital agency"
+    - "software development company"
+    - "студия разработки"
+    - "agency"
   searches:
     - source: "hh-project-manager"
       text: "project manager"
@@ -118,4 +151,7 @@ hh:
       area: 113
     - source: "hh-ru-pm"
       text: "менеджер проектов"
+      area: 113
+    - source: "hh-ru-head-pm"
+      text: "руководитель проектов"
       area: 113

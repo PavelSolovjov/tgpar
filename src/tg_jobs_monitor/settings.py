@@ -34,6 +34,11 @@ class HhConfig(BaseModel):
     per_page: int = 20
     pages: int = 1
     request_delay_seconds: float = 0.0
+    min_salary_rur: int = 0
+    require_remote: bool = False
+    allowed_domain_keywords: list[str] = Field(default_factory=list)
+    excluded_grade_terms: list[str] = Field(default_factory=list)
+    excluded_company_keywords: list[str] = Field(default_factory=list)
     searches: list[HhSearchConfig] = Field(default_factory=list)
 
 

@@ -170,6 +170,11 @@ class HhJobsMonitor:
             )
             return
 
+        prefilter_reason = self._hh_prefilter_reason(vacancy)
+        if prefilter_reason:
+            self._save_rejected(vacancy, text_hash, prefilter_reason)
+            return
+
         result = await self.analyzer.analyze(vacancy.text)
         reason = result.reason
         if result.accepted and not should_publish:
@@ -259,6 +264,35 @@ class HhJobsMonitor:
             datetime=details.get("published_at"),
         )
 
+    def _hh_prefilter_reason(self, vacancy: HhVacancy) -> Optional[str]:
+        normalized = normalize(vacancy.text)
+        salary_reason = salary_filter_reason(vacancy.text, self.config.hh.min_salary_rur)
+        if salary_reason:
+            return salary_reason
+
+        if self.config.hh.require_remote and not supports_remote(normalized):
+            return "Отклонено HH-фильтром: вакансия не поддерживает удаленную работу."
+
+        if self.config.hh.allowed_domain_keywords and not has_any_keyword(
+            normalized,
+            self.config.hh.allowed_domain_keywords,
+        ):
+            return "Отклонено HH-фильтром: вакансия не попадает в домены crypto/web3/fintech/mobile."
+
+        if self.config.hh.excluded_grade_terms and has_any_keyword(
+            normalized,
+            self.config.hh.excluded_grade_terms,
+        ):
+            return "Отклонено HH-фильтром: junior/junior-профиль."
+
+        if self.config.hh.excluded_company_keywords and has_any_keyword(
+            normalized,
+            self.config.hh.excluded_company_keywords,
+        ):
+            return "Отклонено HH-фильтром: компания похожа на заказную разработку или аутсорс."
+
+        return None
+
 
 def clean_html(value: str) -> str:
     text = re.sub(r"<br\s*/?>", "\n", value, flags=re.I)
@@ -294,6 +328,48 @@ def format_salary(payload: object) -> Optional[str]:
     if not parts:
         return None
     return " ".join(parts)
+
+
+def salary_filter_reason(text: str, min_salary_rur: int) -> Optional[str]:
+    if min_salary_rur <= 0:
+        return None
+    match = re.search(r"зарплата:\s*(.+)", text, flags=re.I)
+    if not match:
+        return None
+    salary_text = match.group(1).strip()
+    if "RUR" not in salary_text and "руб" not in salary_text:
+        return None
+
+    numbers = [int(value) for value in re.findall(r"\d+", salary_text)]
+    if not numbers:
+        return None
+    max_value = max(numbers)
+    if max_value < min_salary_rur:
+        return f"Отклонено HH-фильтром: зарплата ниже {min_salary_rur} рублей."
+    return None
+
+
+def supports_remote(normalized_text: str) -> bool:
+    remote_keywords = [
+        "удален",
+        "дистанцион",
+        "remote",
+        "home office",
+        "гибрид",
+        "hybrid",
+    ]
+    return has_any_keyword(normalized_text, remote_keywords)
+
+
+def has_any_keyword(normalized_text: str, keywords: list[str]) -> bool:
+    for keyword in keywords:
+        if normalize(keyword) in normalized_text:
+            return True
+    return False
+
+
+def normalize(text: str) -> str:
+    return re.sub(r"\s+", " ", text.casefold()).strip()
 
 
 def hash_text(text: str) -> str:
