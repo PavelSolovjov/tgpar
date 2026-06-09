@@ -5,7 +5,7 @@ import hashlib
 import logging
 from typing import Optional
 
-from tg_jobs_monitor.analyzer import VacancyAnalyzer
+from tg_jobs_monitor.analyzer import AnalysisResult, VacancyAnalyzer
 from tg_jobs_monitor.bot_publisher import BotPublisher
 from tg_jobs_monitor.settings import AppConfig, EnvSettings
 from tg_jobs_monitor.storage import ProcessedRecord, Storage
@@ -111,7 +111,7 @@ class TelegramWebJobsMonitor:
 
         forwarded_message_id = None
         if result.accepted and should_publish and not self.config.dry_run:
-            forwarded_message_id = await self._publish_match(post, reason, result.resume_summary)
+            forwarded_message_id = await self._publish_match(post, result, reason)
 
         self.storage.save(
             ProcessedRecord(
@@ -127,22 +127,16 @@ class TelegramWebJobsMonitor:
     async def _publish_match(
         self,
         post: ScrapedPost,
+        result: AnalysisResult,
         reason: str,
-        resume_summary: Optional[str],
     ) -> Optional[int]:
         if self.publisher is None:
             return None
 
-        sections = ["Подходящая вакансия"]
-        if resume_summary:
-            sections.append(f"Саммари: {resume_summary}")
-        sections.append(f"Источник: {post.source}")
-        sections.append(f"Причина: {reason}")
-        sections.append(f"Ссылка: {post.url}")
-        header = "\n".join(sections)
+        header = format_publication(post, result, reason)
         return await self.publisher.send_text(
             self.config.destination_channel,
-            f"{header}\n\n{post.text}",
+            header,
         )
 
     def _save_rejected(self, post: ScrapedPost, text_hash: str, reason: str) -> None:
@@ -161,3 +155,43 @@ class TelegramWebJobsMonitor:
 def hash_text(text: str) -> str:
     normalized = " ".join(text.casefold().split())
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def format_publication(
+    post: ScrapedPost,
+    result: AnalysisResult,
+    reason: str,
+) -> str:
+    title = result.vacancy_title or first_non_empty_line(post.text) or "Подходящая вакансия"
+    lines = [title]
+
+    if result.domain_label or result.matched_domain:
+        lines.extend(["", f"Домен: {result.domain_label or result.matched_domain}"])
+
+    if result.match_percentage is not None:
+        lines.append(f"Процент совпадения: {result.match_percentage}%")
+
+    lines.extend(["", f"Ссылка: {post.url}"])
+
+    if result.responsibilities_summary:
+        lines.extend(["", "Что предстоит делать:"])
+        lines.extend(f"• {item}" for item in result.responsibilities_summary)
+    elif result.resume_summary:
+        lines.extend(["", "Что предстоит делать:", f"• {result.resume_summary}"])
+
+    if result.mismatches:
+        lines.extend(["", "Несовпадения:"])
+        lines.extend(f"- {item}" for item in result.mismatches)
+
+    if not result.responsibilities_summary and not result.mismatches:
+        lines.extend(["", f"Комментарий: {reason}"])
+
+    return "\n".join(lines).strip()
+
+
+def first_non_empty_line(text: str) -> Optional[str]:
+    for line in text.splitlines():
+        cleaned = line.strip()
+        if cleaned:
+            return cleaned
+    return None

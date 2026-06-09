@@ -26,6 +26,11 @@ class AnalysisResult:
     matched_level: Optional[str] = None
     resume_summary: Optional[str] = None
     resume_fit: Optional[str] = None
+    vacancy_title: Optional[str] = None
+    domain_label: Optional[str] = None
+    match_percentage: Optional[int] = None
+    responsibilities_summary: tuple[str, ...] = ()
+    mismatches: tuple[str, ...] = ()
 
 
 class VacancyAnalyzer:
@@ -55,7 +60,9 @@ class VacancyAnalyzer:
                 "Level criteria are required only when require_levels is true.",
                 "Do not reject solely because the domain or level is missing when the corresponding requirement is false.",
                 "Reject junior, intern, product-only, sales-only, recruiter-only, and unrelated posts.",
-                "If resume_text is provided, compare the vacancy to the resume and write a short Russian summary.",
+                "If resume_text is provided, compare the vacancy to the resume.",
+                "Do not mention Pavel or any candidate name in the output.",
+                "Write concise Russian text for a Telegram digest that speaks directly to the reader when useful.",
                 "Return only valid JSON.",
             ],
             "criteria": {
@@ -77,6 +84,11 @@ class VacancyAnalyzer:
                 "matched_level": "string or null",
                 "resume_summary": "short Russian summary, 1-3 sentences, or null",
                 "resume_fit": "one of strong_fit, partial_fit, weak_fit, unknown, or null",
+                "vacancy_title": "short vacancy title in Russian or original language, or null",
+                "domain_label": "best short domain label such as Fintech, Crypto, Web3, Payments, Blockchain, or null",
+                "match_percentage": "integer from 0 to 100 estimating fit to resume, or null",
+                "responsibilities_summary": "array of 2-6 short Russian bullet items about what the role involves",
+                "mismatches": "array of 0-5 short Russian bullet items about what may be missing for application; if no clear gaps, return empty array",
             },
             "resume_text": self.resume_text,
             "post_text": trimmed_text,
@@ -110,6 +122,11 @@ class VacancyAnalyzer:
             matched_level=data.get("matched_level"),
             resume_summary=data.get("resume_summary"),
             resume_fit=data.get("resume_fit"),
+            vacancy_title=data.get("vacancy_title"),
+            domain_label=data.get("domain_label"),
+            match_percentage=_coerce_match_percentage(data.get("match_percentage")),
+            responsibilities_summary=_coerce_str_tuple(data.get("responsibilities_summary")),
+            mismatches=_coerce_str_tuple(data.get("mismatches")),
         )
 
     def _analyze_with_keywords(self, text: str) -> AnalysisResult:
@@ -159,6 +176,11 @@ class VacancyAnalyzer:
             matched_level=level,
             resume_summary=None,
             resume_fit=None,
+            vacancy_title=extract_title(text),
+            domain_label=domain.title() if domain else None,
+            match_percentage=None,
+            responsibilities_summary=(),
+            mismatches=(),
         )
 
 
@@ -176,4 +198,32 @@ def find_match(normalized_text: str, terms: list[str]) -> Optional[str]:
             continue
         if normalized_term in normalized_text:
             return term
+    return None
+
+
+def _coerce_str_tuple(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    items = []
+    for item in value:
+        if isinstance(item, str):
+            cleaned = item.strip()
+            if cleaned:
+                items.append(cleaned)
+    return tuple(items)
+
+
+def _coerce_match_percentage(value: object) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return max(0, min(100, int(value)))
+    return None
+
+
+def extract_title(text: str) -> Optional[str]:
+    for line in text.splitlines():
+        cleaned = line.strip(" -•\t")
+        if cleaned:
+            return cleaned[:140]
     return None
