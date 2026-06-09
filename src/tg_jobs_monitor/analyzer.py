@@ -70,6 +70,8 @@ class VacancyAnalyzer:
                 "Use high match scores conservatively.",
                 "90-100 is only for very strong fit where the vacancy is clearly crypto or web3 and the rest of the requirements also mostly match.",
                 "If the vacancy is not crypto/web3 focused, the score should usually stay below 90 even when the role is otherwise strong.",
+                "If the role is project management but the domain is clearly non-IT and non-digital, such as construction, civil engineering, facilities, manufacturing, industrial, oil and gas, or similar offline sectors, the score should usually stay below 50 unless there is unusually strong overlap with the resume.",
+                "Construction project manager and similar offline infrastructure roles are usually a weak fit for this resume and should score below 50.",
                 "Lower the score for meaningful gaps such as stronger English, missing domain depth, or missing required operational experience.",
                 "Return only valid JSON.",
             ],
