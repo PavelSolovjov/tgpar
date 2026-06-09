@@ -27,6 +27,7 @@ class AnalysisResult:
     resume_summary: Optional[str] = None
     resume_fit: Optional[str] = None
     vacancy_title: Optional[str] = None
+    company_name: Optional[str] = None
     domain_label: Optional[str] = None
     match_percentage: Optional[int] = None
     responsibilities_summary: tuple[str, ...] = ()
@@ -63,6 +64,11 @@ class VacancyAnalyzer:
                 "If resume_text is provided, compare the vacancy to the resume.",
                 "Do not mention Pavel or any candidate name in the output.",
                 "Write concise Russian text for a Telegram digest that speaks directly to the reader when useful.",
+                "If company name is not explicit, return null instead of guessing.",
+                "Use high match scores conservatively.",
+                "90-100 is only for very strong fit where the vacancy is clearly crypto or web3 and the rest of the requirements also mostly match.",
+                "If the vacancy is not crypto/web3 focused, the score should usually stay below 90 even when the role is otherwise strong.",
+                "Lower the score for meaningful gaps such as stronger English, missing domain depth, or missing required operational experience.",
                 "Return only valid JSON.",
             ],
             "criteria": {
@@ -85,6 +91,7 @@ class VacancyAnalyzer:
                 "resume_summary": "short Russian summary, 1-3 sentences, or null",
                 "resume_fit": "one of strong_fit, partial_fit, weak_fit, unknown, or null",
                 "vacancy_title": "short vacancy title in Russian or original language, or null",
+                "company_name": "company name if explicitly present, otherwise null",
                 "domain_label": "best short domain label such as Fintech, Crypto, Web3, Payments, Blockchain, or null",
                 "match_percentage": "integer from 0 to 100 estimating fit to resume, or null",
                 "responsibilities_summary": "array of 2-6 short Russian bullet items about what the role involves",
@@ -123,6 +130,7 @@ class VacancyAnalyzer:
             resume_summary=data.get("resume_summary"),
             resume_fit=data.get("resume_fit"),
             vacancy_title=data.get("vacancy_title"),
+            company_name=data.get("company_name"),
             domain_label=data.get("domain_label"),
             match_percentage=_coerce_match_percentage(data.get("match_percentage")),
             responsibilities_summary=_coerce_str_tuple(data.get("responsibilities_summary")),
@@ -177,6 +185,7 @@ class VacancyAnalyzer:
             resume_summary=None,
             resume_fit=None,
             vacancy_title=extract_title(text),
+            company_name=None,
             domain_label=domain.title() if domain else None,
             match_percentage=None,
             responsibilities_summary=(),

@@ -165,26 +165,29 @@ def format_publication(
     title = result.vacancy_title or first_non_empty_line(post.text) or "Подходящая вакансия"
     lines = [title]
 
+    if result.company_name:
+        lines.extend(["", f"🏢 Компания: {result.company_name}"])
+
     if result.domain_label or result.matched_domain:
-        lines.extend(["", f"Домен: {result.domain_label or result.matched_domain}"])
+        lines.extend(["", f"🌐 Домен: {result.domain_label or result.matched_domain}"])
 
     if result.match_percentage is not None:
-        lines.append(f"Процент совпадения: {result.match_percentage}%")
+        lines.append(f"📊 Процент совпадения: {result.match_percentage}%")
 
-    lines.extend(["", f"Ссылка: {post.url}"])
+    lines.extend(["", f"🔗 Ссылка: {post.url}"])
 
     if result.responsibilities_summary:
-        lines.extend(["", "Что предстоит делать:"])
+        lines.extend(["", "🧩 Что предстоит делать:"])
         lines.extend(f"• {item}" for item in result.responsibilities_summary)
     elif result.resume_summary:
-        lines.extend(["", "Что предстоит делать:", f"• {result.resume_summary}"])
+        lines.extend(["", "🧩 Что предстоит делать:", f"• {result.resume_summary}"])
 
     if result.mismatches:
-        lines.extend(["", "Несовпадения:"])
+        lines.extend(["", "⚠️ Несовпадения:"])
         lines.extend(f"- {item}" for item in result.mismatches)
 
     if not result.responsibilities_summary and not result.mismatches:
-        lines.extend(["", f"Комментарий: {reason}"])
+        lines.extend(["", f"💬 Комментарий: {reason}"])
 
     return "\n".join(lines).strip()
 
