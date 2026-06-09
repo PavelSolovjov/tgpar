@@ -50,6 +50,8 @@ criteria:
   roles:
     - "project manager"
     - "delivery manager"
+    - "launch manager"
+    - "implementation manager"
     - "руководитель проектов"
     - "менеджер проектов"
     - "деливери менеджер"
