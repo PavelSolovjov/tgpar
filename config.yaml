@@ -1,7 +1,7 @@
 poll_interval_seconds: 3600
-recent_messages_limit: 50
-request_delay_seconds: 2.0
-request_delay_jitter_seconds: 1.0
+recent_messages_limit: 25
+request_delay_seconds: 1.0
+request_delay_jitter_seconds: 0.5
 publish_on_first_run: false
 dry_run: false
 

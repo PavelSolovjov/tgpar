@@ -58,8 +58,10 @@ class TelegramWebJobsMonitor:
         if not self.config.dry_run and self.publisher is None:
             raise RuntimeError("TELEGRAM_BOT_TOKEN is required unless dry_run is true")
 
-        for index, source in enumerate(self.config.source_channels):
-            if index > 0:
+        total_sources = len(self.config.source_channels)
+        for index, source in enumerate(self.config.source_channels, start=1):
+            logger.info("Polling source %s/%s: %s", index, total_sources, source)
+            if index > 1:
                 delay = self._next_request_delay()
                 if delay > 0:
                     logger.info("Sleeping %.2fs before polling %s", delay, source)
