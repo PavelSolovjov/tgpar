@@ -1,10 +1,6 @@
 name: Hourly Telegram jobs monitor
 
-# Keep this workflow on the default branch so GitHub schedule stays active.
-
 on:
-  schedule:
-    - cron: "14 5-20 * * *"
   workflow_dispatch:
 
 concurrency:
