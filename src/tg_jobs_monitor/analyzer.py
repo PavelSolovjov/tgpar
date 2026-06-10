@@ -61,8 +61,9 @@ class VacancyAnalyzer:
                 "Level criteria are required only when require_levels is true.",
                 "Do not reject solely because the domain or level is missing when the corresponding requirement is false.",
                 "If the role is project manager, delivery manager, program manager, technical project manager, launch manager, implementation manager, or a clear Russian equivalent, accept it even when the domain is not crypto or fintech.",
+                "If the title is product manager or product owner, accept only when the description clearly includes project or delivery ownership such as team coordination, scope management, delivery, execution, release planning, stakeholder alignment, deadlines, or cross-functional project leadership.",
                 "Use match_percentage to reflect how well the vacancy fits the resume; do not use rejection instead of a lower score.",
-                "Reject only clearly unrelated roles, non-vacancies, product-only roles without PM ownership, sales-only roles, recruiter-only roles, and pure developer roles.",
+                "Reject only clearly unrelated roles, non-vacancies, product-only roles without PM or delivery ownership, sales-only roles, recruiter-only roles, and pure developer roles.",
                 "If resume_text is provided, compare the vacancy to the resume.",
                 "Do not mention Pavel or any candidate name in the output.",
                 "Write concise Russian text for a Telegram digest that speaks directly to the reader when useful.",
@@ -165,7 +166,7 @@ class VacancyAnalyzer:
             "open role",
         ]
         is_vacancy = any(marker in normalized for marker in vacancy_markers)
-        role = find_match(normalized, self.config.criteria.roles)
+        role = find_pm_like_role(normalized, self.config.criteria.roles)
         domain = find_match(normalized, self.config.criteria.domains)
         level = find_match(normalized, self.config.criteria.levels)
         domain_ok = bool(domain) or not self.config.criteria.require_domains
@@ -222,6 +223,49 @@ def find_match(normalized_text: str, terms: list[str]) -> Optional[str]:
             continue
         if normalized_term in normalized_text:
             return term
+    return None
+
+
+def find_pm_like_role(normalized_text: str, roles: list[str]) -> Optional[str]:
+    direct_role = find_match(normalized_text, roles)
+    if direct_role is not None:
+        return direct_role
+
+    product_terms = [
+        "product manager",
+        "product owner",
+        "продакт менеджер",
+        "менеджер продукта",
+        "product lead",
+    ]
+    if not any(normalize(term) in normalized_text for term in product_terms):
+        return None
+
+    delivery_signals = [
+        "delivery",
+        "scope",
+        "roadmap execution",
+        "release",
+        "timeline",
+        "deadline",
+        "stakeholder",
+        "cross-functional",
+        "team coordination",
+        "управление команд",
+        "координац",
+        "срок",
+        "релиз",
+        "delivery manager",
+        "project delivery",
+        "execution",
+        "управление проект",
+        "ведение проекта",
+        "декомпозици",
+        "планирован",
+    ]
+    if any(normalize(signal) in normalized_text for signal in delivery_signals):
+        return "product manager (with PM/delivery scope)"
+
     return None
 
 
