@@ -182,6 +182,9 @@ def format_publication(
 
     if result.company_name:
         lines.extend(["", f"🏢 Компания: {result.company_name}"])
+        company_tag = classify_company_tag(result.company_name)
+        if company_tag:
+            lines.append(f"🏷️ Тип компании: {company_tag}")
 
     if result.domain_label or result.matched_domain:
         lines.extend(["", f"🌐 Домен: {result.domain_label or result.matched_domain}"])
@@ -212,4 +215,34 @@ def first_non_empty_line(text: str) -> Optional[str]:
         cleaned = line.strip()
         if cleaned:
             return cleaned
+    return None
+
+
+def classify_company_tag(company_name: str) -> Optional[str]:
+    normalized = " ".join(company_name.casefold().split())
+    big_tech_keywords = [
+        "втб",
+        "vtb",
+        "тинькофф",
+        "т-банк",
+        "t-bank",
+        "tinkoff",
+        "сбер",
+        "sber",
+        "сбербанк",
+        "sberbank",
+        "альфа-банк",
+        "alfabank",
+        "alpha bank",
+        "газпромбанк",
+        "gazprombank",
+        "мтс",
+        "mts",
+        "ozon",
+        "яндекс",
+        "yandex",
+        "vk",
+    ]
+    if any(keyword in normalized for keyword in big_tech_keywords):
+        return "Big Tech / Enterprise"
     return None
