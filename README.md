@@ -148,8 +148,9 @@ SQLite хранит:
 - `jobs_url`: URL списка вакансий
 - `request_delay_seconds`: пауза между detail page запросами
 - `max_description_chars`: лимит текста detail page
+- `min_poll_interval_hours`: минимальный интервал между проверками TON board
 
-В split-режиме TON jobs сейчас включен только в `config-a.yaml`.
+В split-режиме TON jobs сейчас включен только в `config-a.yaml`, а фактическая частота проверки ограничена `min_poll_interval_hours: 24`, поэтому даже если workflow A запускается чаще, сам TON board будет опрашиваться только раз в сутки.
 
 ## HH.ru
 

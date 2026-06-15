@@ -47,6 +47,7 @@ class TonJobsConfig(BaseModel):
     jobs_url: str = "https://jobs.ton.org/jobs"
     request_delay_seconds: float = 0.0
     max_description_chars: int = 8000
+    min_poll_interval_hours: float = 24.0
 
 
 class AppConfig(BaseModel):

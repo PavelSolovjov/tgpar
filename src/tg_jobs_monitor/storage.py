@@ -42,6 +42,11 @@ class Storage:
 
             create index if not exists idx_processed_text_hash
                 on processed_messages(text_hash);
+
+            create table if not exists source_state (
+                source text primary key,
+                last_polled_at text
+            );
             """
         )
         self.connection.commit()
@@ -95,5 +100,29 @@ class Storage:
                 record.forwarded_message_id,
                 datetime.now(timezone.utc).isoformat(),
             ),
+        )
+        self.connection.commit()
+
+    def last_polled_at(self, source: str) -> Optional[datetime]:
+        row = self.connection.execute(
+            "select last_polled_at from source_state where source = ?",
+            (source,),
+        ).fetchone()
+        if row is None or row["last_polled_at"] is None:
+            return None
+        value = str(row["last_polled_at"]).strip()
+        if not value:
+            return None
+        return datetime.fromisoformat(value)
+
+    def mark_polled(self, source: str, polled_at: Optional[datetime] = None) -> None:
+        timestamp = (polled_at or datetime.now(timezone.utc)).isoformat()
+        self.connection.execute(
+            """
+            insert into source_state (source, last_polled_at)
+            values (?, ?)
+            on conflict(source) do update set last_polled_at = excluded.last_polled_at
+            """,
+            (source, timestamp),
         )
         self.connection.commit()

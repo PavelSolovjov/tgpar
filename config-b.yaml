@@ -74,3 +74,4 @@ hh:
 
 ton_jobs:
   enabled: false
+  min_poll_interval_hours: 24

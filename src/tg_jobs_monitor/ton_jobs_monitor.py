@@ -5,6 +5,7 @@ import hashlib
 import logging
 import re
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
 
 import httpx
@@ -161,8 +162,12 @@ class TonJobsMonitor:
             raise RuntimeError("TELEGRAM_BOT_TOKEN is required unless dry_run is true")
 
         source = "ton-jobs"
+        if self._should_skip_poll(source):
+            return
+
         last_id = self.storage.last_message_id(source)
         jobs = await self.scraper.fetch_latest_jobs()
+        self.storage.mark_polled(source)
 
         if last_id is None:
             logger.info(
@@ -186,6 +191,27 @@ class TonJobsMonitor:
                 await self._process_job(enriched, should_publish=should_publish)
             except Exception:
                 logger.exception("Failed to process TON job %s", job.url)
+
+    def _should_skip_poll(self, source: str) -> bool:
+        min_interval_hours = max(0.0, self.config.ton_jobs.min_poll_interval_hours)
+        if min_interval_hours <= 0:
+            return False
+
+        last_polled_at = self.storage.last_polled_at(source)
+        if last_polled_at is None:
+            return False
+
+        now = datetime.now(timezone.utc)
+        next_allowed_at = last_polled_at + timedelta(hours=min_interval_hours)
+        if next_allowed_at > now:
+            remaining = next_allowed_at - now
+            logger.info(
+                "Skipping TON jobs poll for %s. Next check available in %.1f hours.",
+                source,
+                remaining.total_seconds() / 3600,
+            )
+            return True
+        return False
 
     async def _process_job(self, job: TonJob, should_publish: bool) -> None:
         if self.storage.is_message_processed(job.source, job.message_id):

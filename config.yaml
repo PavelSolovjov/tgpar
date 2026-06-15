@@ -162,3 +162,4 @@ ton_jobs:
   jobs_url: "https://jobs.ton.org/jobs"
   request_delay_seconds: 0.5
   max_description_chars: 8000
+  min_poll_interval_hours: 24
