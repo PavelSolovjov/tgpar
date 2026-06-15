@@ -71,6 +71,7 @@ source_channels:
   - "@linkedinremotejobs"
   - "@cryptojobs"
   - "@cryptoworldwidejobs"
+  - "@ItCharmHub"
 
 # The target channel where matching vacancies will be posted.
 # The bot must be an admin there.

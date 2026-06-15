@@ -38,6 +38,7 @@ source_channels:
   - "@laborx"
   - "@findmyremote"
   - "@cryptojobs"
+  - "@ItCharmHub"
 
 # The target channel where matching vacancies will be posted.
 # The bot must be an admin there.
