@@ -72,6 +72,9 @@ source_channels:
   - "@cryptojobs"
   - "@cryptoworldwidejobs"
   - "@ItCharmHub"
+  - "@rabota_go"
+  - "@theypaywell"
+  - "@sparklesjobs"
 
 # The target channel where matching vacancies will be posted.
 # The bot must be an admin there.
