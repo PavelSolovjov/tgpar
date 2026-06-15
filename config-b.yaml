@@ -71,3 +71,6 @@ llm:
 
 hh:
   enabled: false
+
+ton_jobs:
+  enabled: false

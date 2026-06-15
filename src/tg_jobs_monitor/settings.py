@@ -42,6 +42,13 @@ class HhConfig(BaseModel):
     searches: list[HhSearchConfig] = Field(default_factory=list)
 
 
+class TonJobsConfig(BaseModel):
+    enabled: bool = False
+    jobs_url: str = "https://jobs.ton.org/jobs"
+    request_delay_seconds: float = 0.0
+    max_description_chars: int = 8000
+
+
 class AppConfig(BaseModel):
     poll_interval_seconds: int = 60
     recent_messages_limit: int = 50
@@ -54,6 +61,7 @@ class AppConfig(BaseModel):
     criteria: CriteriaConfig
     llm: LlmConfig = Field(default_factory=LlmConfig)
     hh: HhConfig = Field(default_factory=HhConfig)
+    ton_jobs: TonJobsConfig = Field(default_factory=TonJobsConfig)
 
 
 class EnvSettings(BaseSettings):

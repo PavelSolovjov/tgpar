@@ -156,3 +156,9 @@ hh:
     - source: "hh-ru-head-pm"
       text: "руководитель проектов"
       area: 113
+
+ton_jobs:
+  enabled: true
+  jobs_url: "https://jobs.ton.org/jobs"
+  request_delay_seconds: 0.5
+  max_description_chars: 8000
