@@ -44,10 +44,12 @@ class VacancyAnalyzer:
     async def analyze(self, text: str) -> AnalysisResult:
         if self.client and self.config.llm.enabled:
             try:
-                return await self._analyze_with_llm(text)
+                result = await self._analyze_with_llm(text)
+                return self._apply_location_preference(result, text)
             except Exception:
                 logger.exception("LLM analysis failed, falling back to keyword heuristic")
-        return self._analyze_with_keywords(text)
+        result = self._analyze_with_keywords(text)
+        return self._apply_location_preference(result, text)
 
     async def _analyze_with_llm(self, text: str) -> AnalysisResult:
         criteria = self.config.criteria
@@ -80,6 +82,8 @@ class VacancyAnalyzer:
                 "If the post is only a short listing or roundup without meaningful vacancy description, responsibilities, requirements, or context, the score should stay below 50 because there is not enough information to justify a strong fit.",
                 "If the vacancy is tied to onsite work or relocation abroad and there is no explicit remote option, lower the score aggressively unless the resume clearly supports that geography and language context.",
                 "If the vacancy is in Germany, DACH, or another local-language market and the post does not indicate English-only work while the resume does not show the local language, treat this as a major mismatch and keep the score below 50.",
+                "The candidate is interested either in remote work or in office work in Saint Petersburg. If the vacancy is explicitly tied to office, hybrid, onsite, or relocation in another city or country and there is no clear remote option, lower the score aggressively.",
+                "If the vacancy location is clearly not Saint Petersburg and not remote, treat location as a meaningful mismatch and usually keep the score below 50.",
                 "Do not give strong scores to vacancies with missing description; uncertainty should lower the score, not raise it.",
                 "If there is too little information to judge fit confidently, use about 50 as the neutral ceiling for an otherwise plausible PM vacancy.",
                 "If description is missing and there are no clear positive or negative signals, keep the score around 45-50 rather than above 50.",
@@ -208,6 +212,49 @@ class VacancyAnalyzer:
             mismatches=(),
         )
 
+    def _apply_location_preference(self, result: AnalysisResult, text: str) -> AnalysisResult:
+        if result.match_percentage is None:
+            return result
+
+        normalized = normalize(text)
+        if is_preferred_location(normalized):
+            return result
+
+        if not has_nonpreferred_location_signal(normalized):
+            return result
+
+        capped_score = min(result.match_percentage, 45)
+        location_mismatch = (
+            "Локация не совпадает: приоритет удаленка или офис в Санкт-Петербурге."
+        )
+        mismatches = list(result.mismatches)
+        if location_mismatch not in mismatches:
+            mismatches.append(location_mismatch)
+
+        reason = result.reason
+        if "локац" not in reason.casefold():
+            reason += " Локация снижает fit: приоритет удаленка или офис в Санкт-Петербурге."
+
+        return AnalysisResult(
+            accepted=result.accepted,
+            is_vacancy=result.is_vacancy,
+            role_match=result.role_match,
+            domain_match=result.domain_match,
+            level_match=result.level_match,
+            reason=reason,
+            matched_role=result.matched_role,
+            matched_domain=result.matched_domain,
+            matched_level=result.matched_level,
+            resume_summary=result.resume_summary,
+            resume_fit=result.resume_fit,
+            vacancy_title=result.vacancy_title,
+            company_name=result.company_name,
+            domain_label=result.domain_label,
+            match_percentage=capped_score,
+            responsibilities_summary=result.responsibilities_summary,
+            mismatches=tuple(mismatches),
+        )
+
 
 def normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text.casefold()).strip()
@@ -267,6 +314,50 @@ def find_pm_like_role(normalized_text: str, roles: list[str]) -> Optional[str]:
         return "product manager (with PM/delivery scope)"
 
     return None
+
+
+def is_preferred_location(normalized_text: str) -> bool:
+    remote_keywords = [
+        "удален",
+        "дистанцион",
+        "remote",
+        "work from home",
+        "home office",
+        "anywhere",
+        "worldwide",
+    ]
+    spb_keywords = [
+        "санкт-петербург",
+        "санкт петербург",
+        "спб",
+        "saint petersburg",
+        "st. petersburg",
+        "st petersburg",
+        "saint-petersburg",
+        "petersburg",
+        "питер",
+    ]
+    return any(keyword in normalized_text for keyword in remote_keywords + spb_keywords)
+
+
+def has_nonpreferred_location_signal(normalized_text: str) -> bool:
+    location_signals = [
+        "relocation",
+        "релокац",
+        "onsite",
+        "on-site",
+        "office",
+        "офис",
+        "гибрид",
+        "hybrid",
+        "локация",
+        "location",
+        "based in",
+        "must be located",
+        "only from",
+        "только из",
+    ]
+    return any(signal in normalized_text for signal in location_signals)
 
 
 def _coerce_str_tuple(value: object) -> tuple[str, ...]:
