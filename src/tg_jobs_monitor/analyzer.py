@@ -45,10 +45,12 @@ class VacancyAnalyzer:
         if self.client and self.config.llm.enabled:
             try:
                 result = await self._analyze_with_llm(text)
+                result = self._apply_pm_publication_rule(result)
                 return self._apply_location_preference(result, text)
             except Exception:
                 logger.exception("LLM analysis failed, falling back to keyword heuristic")
         result = self._analyze_with_keywords(text)
+        result = self._apply_pm_publication_rule(result)
         return self._apply_location_preference(result, text)
 
     async def _analyze_with_llm(self, text: str) -> AnalysisResult:
@@ -65,6 +67,7 @@ class VacancyAnalyzer:
                 "If the role is project manager, delivery manager, program manager, technical project manager, launch manager, implementation manager, or a clear Russian equivalent, accept it even when the domain is not crypto or fintech.",
                 "If the title is product manager or product owner, accept only when the description clearly includes project or delivery ownership such as team coordination, scope management, delivery, execution, release planning, stakeholder alignment, deadlines, or cross-functional project leadership.",
                 "Use match_percentage to reflect how well the vacancy fits the resume; do not use rejection instead of a lower score.",
+                "For a real PM-like vacancy, keep accepted=true even when the fit is weak because of location, domain mismatch, hard-skill gaps, or language gaps. In such cases lower match_percentage and explain mismatches instead of rejecting.",
                 "Reject only clearly unrelated roles, non-vacancies, product-only roles without PM or delivery ownership, sales-only roles, recruiter-only roles, and pure developer roles.",
                 "If resume_text is provided, compare the vacancy to the resume.",
                 "Do not mention Pavel or any candidate name in the output.",
@@ -210,6 +213,39 @@ class VacancyAnalyzer:
             match_percentage=None,
             responsibilities_summary=(),
             mismatches=(),
+        )
+
+    def _apply_pm_publication_rule(self, result: AnalysisResult) -> AnalysisResult:
+        if result.accepted:
+            return result
+        if not result.is_vacancy or not result.role_match:
+            return result
+
+        reason = result.reason
+        pm_override_reason = (
+            " PM-вакансия оставлена к публикации; процент fit отражает качество совпадения."
+        )
+        if "оставлена к публикации" not in reason:
+            reason += pm_override_reason
+
+        return AnalysisResult(
+            accepted=True,
+            is_vacancy=result.is_vacancy,
+            role_match=result.role_match,
+            domain_match=result.domain_match,
+            level_match=result.level_match,
+            reason=reason,
+            matched_role=result.matched_role,
+            matched_domain=result.matched_domain,
+            matched_level=result.matched_level,
+            resume_summary=result.resume_summary,
+            resume_fit=result.resume_fit,
+            vacancy_title=result.vacancy_title,
+            company_name=result.company_name,
+            domain_label=result.domain_label,
+            match_percentage=result.match_percentage,
+            responsibilities_summary=result.responsibilities_summary,
+            mismatches=result.mismatches,
         )
 
     def _apply_location_preference(self, result: AnalysisResult, text: str) -> AnalysisResult:
