@@ -15,7 +15,7 @@ from tg_jobs_monitor.analyzer import AnalysisResult, VacancyAnalyzer
 from tg_jobs_monitor.bot_publisher import BotPublisher
 from tg_jobs_monitor.settings import AppConfig, EnvSettings
 from tg_jobs_monitor.storage import ProcessedRecord, Storage
-from tg_jobs_monitor.web_monitor import format_publication
+from tg_jobs_monitor.web_monitor import format_publication, is_publishable_match
 
 logger = logging.getLogger(__name__)
 
@@ -230,11 +230,16 @@ class TonJobsMonitor:
         reason = result.reason
         if result.accepted and not should_publish:
             reason += " Не опубликовано: первый проход, publish_on_first_run=false."
+        elif result.accepted and not is_publishable_match(result):
+            reason += (
+                f" Не опубликовано: процент совпадения должен быть выше 55 "
+                f"(сейчас {result.match_percentage if result.match_percentage is not None else 'не указан'}%)."
+            )
 
         logger.info("%s/%s: %s | accepted=%s", job.source, job.message_id, reason, result.accepted)
 
         forwarded_message_id = None
-        if result.accepted and should_publish and not self.config.dry_run:
+        if result.accepted and should_publish and is_publishable_match(result) and not self.config.dry_run:
             forwarded_message_id = await self._publish_match(job, result, reason)
 
         self.storage.save(

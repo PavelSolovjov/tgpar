@@ -13,6 +13,7 @@ from tg_jobs_monitor.storage import ProcessedRecord, Storage
 from tg_jobs_monitor.web_scraper import ScrapedPost, TelegramWebScraper
 
 logger = logging.getLogger(__name__)
+MIN_PUBLISH_MATCH_PERCENTAGE = 56
 
 
 class TelegramWebJobsMonitor:
@@ -108,6 +109,11 @@ class TelegramWebJobsMonitor:
         reason = result.reason
         if result.accepted and not should_publish:
             reason += " Не опубликовано: первый проход, publish_on_first_run=false."
+        elif result.accepted and not is_publishable_match(result):
+            reason += (
+                f" Не опубликовано: процент совпадения должен быть выше 55 "
+                f"(сейчас {result.match_percentage if result.match_percentage is not None else 'не указан'}%)."
+            )
 
         logger.info(
             "%s/%s: %s | accepted=%s",
@@ -118,7 +124,7 @@ class TelegramWebJobsMonitor:
         )
 
         forwarded_message_id = None
-        if result.accepted and should_publish and not self.config.dry_run:
+        if result.accepted and should_publish and is_publishable_match(result) and not self.config.dry_run:
             forwarded_message_id = await self._publish_match(post, result, reason)
 
         self.storage.save(
@@ -170,6 +176,13 @@ class TelegramWebJobsMonitor:
 def hash_text(text: str) -> str:
     normalized = " ".join(text.casefold().split())
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def is_publishable_match(result: AnalysisResult) -> bool:
+    return (
+        result.match_percentage is not None
+        and result.match_percentage >= MIN_PUBLISH_MATCH_PERCENTAGE
+    )
 
 
 def format_publication(

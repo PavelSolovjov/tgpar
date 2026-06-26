@@ -45,12 +45,16 @@ class VacancyAnalyzer:
         if self.client and self.config.llm.enabled:
             try:
                 result = await self._analyze_with_llm(text)
-                result = self._apply_pm_publication_rule(result)
+                result = self._apply_product_domain_rule(result, text)
+                result = self._apply_pm_publication_rule(result, text)
+                result = self._apply_keyword_fit_penalties(result, text)
                 return self._apply_location_preference(result, text)
             except Exception:
                 logger.exception("LLM analysis failed, falling back to keyword heuristic")
         result = self._analyze_with_keywords(text)
-        result = self._apply_pm_publication_rule(result)
+        result = self._apply_product_domain_rule(result, text)
+        result = self._apply_pm_publication_rule(result, text)
+        result = self._apply_keyword_fit_penalties(result, text)
         return self._apply_location_preference(result, text)
 
     async def _analyze_with_llm(self, text: str) -> AnalysisResult:
@@ -66,6 +70,7 @@ class VacancyAnalyzer:
                 "Do not reject solely because the domain or level is missing when the corresponding requirement is false.",
                 "If the role is project manager, delivery manager, program manager, technical project manager, launch manager, implementation manager, or a clear Russian equivalent, accept it even when the domain is not crypto or fintech.",
                 "If the title is product manager or product owner, accept only when the description clearly includes project or delivery ownership such as team coordination, scope management, delivery, execution, release planning, stakeholder alignment, deadlines, or cross-functional project leadership.",
+                "If the role is product manager or product owner, the domain must explicitly be crypto or web3. Non-crypto and non-web3 product vacancies should be rejected.",
                 "Use match_percentage to reflect how well the vacancy fits the resume; do not use rejection instead of a lower score.",
                 "For a real PM-like vacancy, keep accepted=true even when the fit is weak because of location, domain mismatch, hard-skill gaps, or language gaps. In such cases lower match_percentage and explain mismatches instead of rejecting.",
                 "Reject only clearly unrelated roles, non-vacancies, product-only roles without PM or delivery ownership, sales-only roles, recruiter-only roles, and pure developer roles.",
@@ -78,6 +83,7 @@ class VacancyAnalyzer:
                 "If the vacancy is not crypto/web3 focused, the score should usually stay below 90 even when the role is otherwise strong.",
                 "If the role is project management but the domain is clearly non-IT and non-digital, such as construction, civil engineering, facilities, manufacturing, industrial, oil and gas, or similar offline sectors, the score should usually stay below 50 unless there is unusually strong overlap with the resume.",
                 "Construction project manager and similar offline infrastructure roles are usually a weak fit for this resume and should score below 50.",
+                "Vacancies containing 1C, 1С, junior, джуниор, intern, стажер, or стажировка should score low unless the rest of the post explicitly proves a very unusual match.",
                 "If the vacancy is centered on DWH, BI, analytics platforms, data engineering, backend infrastructure, or database-heavy delivery rather than product/project coordination in the candidate's domain, the score should usually stay below 50 unless the resume clearly shows matching experience.",
                 "When the vacancy explicitly requires hands-on tools or stack that are absent from the resume, such as PostgreSQL, Python, Apache Airflow, MS SQL, DWH, Spark, Kafka, or similar data/backend stack, treat this as a major mismatch and lower the score aggressively.",
                 "If there is both a domain mismatch and several hard-skill mismatches, the score should normally stay below 50.",
@@ -215,10 +221,50 @@ class VacancyAnalyzer:
             mismatches=(),
         )
 
-    def _apply_pm_publication_rule(self, result: AnalysisResult) -> AnalysisResult:
+    def _apply_product_domain_rule(self, result: AnalysisResult, text: str) -> AnalysisResult:
+        normalized = normalize(text)
+        if not is_product_role_text(normalized):
+            return result
+        if has_crypto_web3_domain(normalized):
+            return result
+
+        reason = result.reason
+        product_reason = " Product-вакансия отклонена: для product обязателен домен crypto или web3."
+        if "обязателен домен crypto или web3" not in reason:
+            reason += product_reason
+
+        mismatches = list(result.mismatches)
+        mismatch = "Для product-вакансии нужен явный домен crypto или web3."
+        if mismatch not in mismatches:
+            mismatches.append(mismatch)
+
+        capped_score = min(result.match_percentage, 35) if result.match_percentage is not None else 35
+        return AnalysisResult(
+            accepted=False,
+            is_vacancy=result.is_vacancy,
+            role_match=result.role_match,
+            domain_match=False,
+            level_match=result.level_match,
+            reason=reason,
+            matched_role=result.matched_role,
+            matched_domain=result.matched_domain,
+            matched_level=result.matched_level,
+            resume_summary=result.resume_summary,
+            resume_fit=result.resume_fit,
+            vacancy_title=result.vacancy_title,
+            company_name=result.company_name,
+            domain_label=result.domain_label,
+            match_percentage=capped_score,
+            responsibilities_summary=result.responsibilities_summary,
+            mismatches=tuple(mismatches),
+        )
+
+    def _apply_pm_publication_rule(self, result: AnalysisResult, text: str) -> AnalysisResult:
         if result.accepted:
             return result
         if not result.is_vacancy or not result.role_match:
+            return result
+        if is_product_role_text(normalize(text)) and not has_crypto_web3_domain(normalize(text)):
             return result
 
         reason = result.reason
@@ -246,6 +292,60 @@ class VacancyAnalyzer:
             match_percentage=result.match_percentage,
             responsibilities_summary=result.responsibilities_summary,
             mismatches=result.mismatches,
+        )
+
+    def _apply_keyword_fit_penalties(self, result: AnalysisResult, text: str) -> AnalysisResult:
+        if result.match_percentage is None:
+            return result
+
+        normalized = normalize(text)
+        penalty_caps: list[tuple[list[str], int, str]] = [
+            (
+                ["строитель", "construction", "civil engineering", "facilities", "oil and gas"],
+                25,
+                "Строительная или офлайн-инфраструктурная сфера сильно снижает fit.",
+            ),
+            (
+                ["1с", "1c", "1с:erp", "1c:erp", "1с erp", "1c erp"],
+                30,
+                "1С-направление сильно снижает fit.",
+            ),
+            (
+                ["junior", "джуниор", "intern", "стажер", "стажировка"],
+                20,
+                "Junior / стажерский уровень сильно снижает fit.",
+            ),
+        ]
+
+        capped_score = result.match_percentage
+        mismatches = list(result.mismatches)
+        for keywords, cap, mismatch in penalty_caps:
+            if any(keyword in normalized for keyword in keywords):
+                capped_score = min(capped_score, cap)
+                if mismatch not in mismatches:
+                    mismatches.append(mismatch)
+
+        if capped_score == result.match_percentage and tuple(mismatches) == result.mismatches:
+            return result
+
+        return AnalysisResult(
+            accepted=result.accepted,
+            is_vacancy=result.is_vacancy,
+            role_match=result.role_match,
+            domain_match=result.domain_match,
+            level_match=result.level_match,
+            reason=result.reason,
+            matched_role=result.matched_role,
+            matched_domain=result.matched_domain,
+            matched_level=result.matched_level,
+            resume_summary=result.resume_summary,
+            resume_fit=result.resume_fit,
+            vacancy_title=result.vacancy_title,
+            company_name=result.company_name,
+            domain_label=result.domain_label,
+            match_percentage=capped_score,
+            responsibilities_summary=result.responsibilities_summary,
+            mismatches=tuple(mismatches),
         )
 
     def _apply_location_preference(self, result: AnalysisResult, text: str) -> AnalysisResult:
@@ -350,6 +450,28 @@ def find_pm_like_role(normalized_text: str, roles: list[str]) -> Optional[str]:
         return "product manager (with PM/delivery scope)"
 
     return None
+
+
+def is_product_role_text(normalized_text: str) -> bool:
+    product_terms = [
+        "product manager",
+        "product owner",
+        "продакт менеджер",
+        "менеджер продукта",
+        "product lead",
+    ]
+    return any(normalize(term) in normalized_text for term in product_terms)
+
+
+def has_crypto_web3_domain(normalized_text: str) -> bool:
+    domain_terms = [
+        "crypto",
+        "web3",
+        "крипт",
+        "блокчейн",
+        "blockchain",
+    ]
+    return any(term in normalized_text for term in domain_terms)
 
 
 def is_preferred_location(normalized_text: str) -> bool:
