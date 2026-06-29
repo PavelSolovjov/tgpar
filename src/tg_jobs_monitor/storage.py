@@ -48,12 +48,6 @@ class Storage:
                     unique(source, message_id)
                 );
 
-                create index if not exists idx_processed_text_hash
-                    on processed_messages(text_hash);
-
-                create index if not exists idx_processed_dedupe_key
-                    on processed_messages(dedupe_key);
-
                 create table if not exists source_state (
                     source text primary key,
                     last_polled_at text
@@ -69,6 +63,15 @@ class Storage:
                     self.connection.execute(statement)
                 except sqlite3.OperationalError:
                     pass
+            self.connection.executescript(
+                """
+                create index if not exists idx_processed_text_hash
+                    on processed_messages(text_hash);
+
+                create index if not exists idx_processed_dedupe_key
+                    on processed_messages(dedupe_key);
+                """
+            )
             self.connection.commit()
         except Exception:
             self.connection.rollback()
