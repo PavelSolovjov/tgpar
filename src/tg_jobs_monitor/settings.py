@@ -60,6 +60,7 @@ class AppConfig(BaseModel):
     source_channels: list[str]
     destination_channel: str
     criteria: CriteriaConfig
+    resume_facts: list[str] = Field(default_factory=list)
     llm: LlmConfig = Field(default_factory=LlmConfig)
     hh: HhConfig = Field(default_factory=HhConfig)
     ton_jobs: TonJobsConfig = Field(default_factory=TonJobsConfig)

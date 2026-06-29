@@ -112,6 +112,8 @@ sudo systemctl enable --now telegram-jobs-monitor
 
 Если задан `RESUME_TEXT` или локальный `resume.md`, LLM также сравнивает вакансию с резюме и добавляет короткое summary в публикуемый пост.
 
+Дополнительно можно задать `resume_facts` в `config.yaml`. Эти факты будут автоматически добавлены к контексту резюме и попадут в LLM-анализ даже если основное резюме хранится в GitHub secret `RESUME_TEXT`.
+
 ## Дедупликация
 
 SQLite хранит:
@@ -131,6 +133,7 @@ SQLite хранит:
 - `source_channels`: список каналов-источников.
 - `destination_channel`: канал для подходящих вакансий.
 - `criteria.roles/domains/levels`: критерии фильтрации.
+- `resume_facts`: короткие постоянные факты о кандидате, которые важно учитывать при расчете fit.
 - `poll_interval_seconds`: период проверки.
 - `recent_messages_limit`: сколько последних сообщений смотреть на первом проходе.
 - `publish_on_first_run`: публиковать ли подходящие старые посты при первом запуске.

@@ -39,7 +39,7 @@ class VacancyAnalyzer:
         self.env = env
         self.config = config
         self.client = AsyncOpenAI(api_key=env.openai_api_key) if env.openai_api_key else None
-        self.resume_text = load_resume_text(env)
+        self.resume_text = build_resume_context(load_resume_text(env), config.resume_facts)
 
     async def analyze(self, text: str) -> AnalysisResult:
         if self.client and self.config.llm.enabled:
@@ -578,6 +578,19 @@ def has_nonpreferred_location_signal(normalized_text: str) -> bool:
         "только из",
     ]
     return any(signal in normalized_text for signal in location_signals)
+
+
+def build_resume_context(base_resume_text: Optional[str], resume_facts: list[str]) -> Optional[str]:
+    facts = [fact.strip() for fact in resume_facts if fact and fact.strip()]
+    if not base_resume_text and not facts:
+        return None
+    if not facts:
+        return base_resume_text
+
+    facts_block = "Дополнительные факты о кандидате:\n" + "\n".join(f"- {fact}" for fact in facts)
+    if not base_resume_text:
+        return facts_block
+    return f"{base_resume_text.strip()}\n\n{facts_block}"
 
 
 def _coerce_str_tuple(value: object) -> tuple[str, ...]:
