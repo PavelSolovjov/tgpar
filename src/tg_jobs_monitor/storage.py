@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from difflib import SequenceMatcher
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +16,9 @@ class ProcessedRecord:
     accepted: bool
     reason: str
     forwarded_message_id: Optional[int] = None
+    vacancy_title: Optional[str] = None
+    company_name: Optional[str] = None
+    dedupe_key: Optional[str] = None
 
 
 class Storage:
@@ -26,30 +30,49 @@ class Storage:
         self._migrate()
 
     def _migrate(self) -> None:
-        self.connection.executescript(
-            """
-            create table if not exists processed_messages (
-                id integer primary key autoincrement,
-                source text not null,
-                message_id integer not null,
-                text_hash text not null,
-                accepted integer not null,
-                reason text not null,
-                forwarded_message_id integer,
-                processed_at text not null,
-                unique(source, message_id)
-            );
+        try:
+            self.connection.executescript(
+                """
+                create table if not exists processed_messages (
+                    id integer primary key autoincrement,
+                    source text not null,
+                    message_id integer not null,
+                    text_hash text not null,
+                    accepted integer not null,
+                    reason text not null,
+                    forwarded_message_id integer,
+                    vacancy_title text,
+                    company_name text,
+                    dedupe_key text,
+                    processed_at text not null,
+                    unique(source, message_id)
+                );
 
-            create index if not exists idx_processed_text_hash
-                on processed_messages(text_hash);
+                create index if not exists idx_processed_text_hash
+                    on processed_messages(text_hash);
 
-            create table if not exists source_state (
-                source text primary key,
-                last_polled_at text
-            );
-            """
-        )
-        self.connection.commit()
+                create index if not exists idx_processed_dedupe_key
+                    on processed_messages(dedupe_key);
+
+                create table if not exists source_state (
+                    source text primary key,
+                    last_polled_at text
+                );
+                """
+            )
+            for statement in (
+                "alter table processed_messages add column vacancy_title text",
+                "alter table processed_messages add column company_name text",
+                "alter table processed_messages add column dedupe_key text",
+            ):
+                try:
+                    self.connection.execute(statement)
+                except sqlite3.OperationalError:
+                    pass
+            self.connection.commit()
+        except Exception:
+            self.connection.rollback()
+            raise
 
     def close(self) -> None:
         self.connection.close()
@@ -67,6 +90,32 @@ class Storage:
             (text_hash,),
         ).fetchone()
         return row is not None
+
+    def find_similar_vacancy(
+        self,
+        dedupe_key: Optional[str],
+        *,
+        limit: int = 300,
+    ) -> Optional[sqlite3.Row]:
+        candidate = normalize_dedupe_key(dedupe_key)
+        if not candidate:
+            return None
+
+        rows = self.connection.execute(
+            """
+            select source, message_id, dedupe_key
+            from processed_messages
+            where dedupe_key is not null and dedupe_key != ''
+            order by id desc
+            limit ?
+            """,
+            (limit,),
+        ).fetchall()
+        for row in rows:
+            existing = normalize_dedupe_key(row["dedupe_key"])
+            if existing and are_similar_dedupe_keys(candidate, existing):
+                return row
+        return None
 
     def last_message_id(self, source: str) -> Optional[int]:
         row = self.connection.execute(
@@ -87,9 +136,12 @@ class Storage:
                 accepted,
                 reason,
                 forwarded_message_id,
+                vacancy_title,
+                company_name,
+                dedupe_key,
                 processed_at
             )
-            values (?, ?, ?, ?, ?, ?, ?)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 record.source,
@@ -98,6 +150,9 @@ class Storage:
                 int(record.accepted),
                 record.reason,
                 record.forwarded_message_id,
+                record.vacancy_title,
+                record.company_name,
+                record.dedupe_key,
                 datetime.now(timezone.utc).isoformat(),
             ),
         )
@@ -126,3 +181,28 @@ class Storage:
             (source, timestamp),
         )
         self.connection.commit()
+
+
+def normalize_dedupe_key(value: Optional[str]) -> str:
+    if value is None:
+        return ""
+    return " ".join(str(value).casefold().split())
+
+
+def are_similar_dedupe_keys(left: str, right: str) -> bool:
+    if left == right:
+        return True
+
+    left_company, left_title = split_dedupe_key(left)
+    right_company, right_title = split_dedupe_key(right)
+    if not left_company or not right_company:
+        return False
+
+    company_ratio = SequenceMatcher(None, left_company, right_company).ratio()
+    title_ratio = SequenceMatcher(None, left_title, right_title).ratio()
+    return company_ratio >= 0.84 and title_ratio >= 0.72
+
+
+def split_dedupe_key(value: str) -> tuple[str, str]:
+    company, _, title = value.partition("||")
+    return company.strip(), title.strip()

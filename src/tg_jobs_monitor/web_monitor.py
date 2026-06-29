@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import logging
 import random
+import re
 from typing import Optional
 
 from tg_jobs_monitor.analyzer import AnalysisResult, VacancyAnalyzer
@@ -106,6 +107,20 @@ class TelegramWebJobsMonitor:
             return
 
         result = await self.analyzer.analyze(post.text)
+        dedupe_key = build_dedupe_key(post.text, result)
+        duplicate = self.storage.find_similar_vacancy(dedupe_key)
+        if duplicate is not None:
+            self._save_rejected(
+                post,
+                text_hash,
+                (
+                    "Отклонено: похоже на дубль уже обработанной вакансии "
+                    f"из {duplicate['source']}/{duplicate['message_id']}."
+                ),
+                result=result,
+            )
+            return
+
         reason = result.reason
         if result.accepted and not should_publish:
             reason += " Не опубликовано: первый проход, publish_on_first_run=false."
@@ -135,6 +150,9 @@ class TelegramWebJobsMonitor:
                 accepted=result.accepted,
                 reason=reason,
                 forwarded_message_id=forwarded_message_id,
+                vacancy_title=result.vacancy_title,
+                company_name=result.company_name,
+                dedupe_key=dedupe_key,
             )
         )
 
@@ -153,7 +171,14 @@ class TelegramWebJobsMonitor:
             header,
         )
 
-    def _save_rejected(self, post: ScrapedPost, text_hash: str, reason: str) -> None:
+    def _save_rejected(
+        self,
+        post: ScrapedPost,
+        text_hash: str,
+        reason: str,
+        *,
+        result: Optional[AnalysisResult] = None,
+    ) -> None:
         logger.info("%s/%s: %s", post.source, post.message_id, reason)
         self.storage.save(
             ProcessedRecord(
@@ -162,6 +187,9 @@ class TelegramWebJobsMonitor:
                 text_hash=text_hash,
                 accepted=False,
                 reason=reason,
+                vacancy_title=result.vacancy_title if result else None,
+                company_name=result.company_name if result else None,
+                dedupe_key=build_dedupe_key(post.text, result) if result else None,
             )
         )
 
@@ -204,6 +232,10 @@ def format_publication(
 
     if result.match_percentage is not None:
         lines.append(f"📊 Процент совпадения: {result.match_percentage}%")
+
+    salary = extract_salary_info(post.text)
+    if salary:
+        lines.append(f"💰 Зарплата: {salary}")
 
     lines.extend(["", f"🔗 Ссылка: {post.url}"])
 
@@ -259,3 +291,63 @@ def classify_company_tag(company_name: str) -> Optional[str]:
     if any(keyword in normalized for keyword in big_tech_keywords):
         return "Big Tech / Enterprise"
     return None
+
+
+def extract_salary_info(text: str) -> Optional[str]:
+    currency_markers = ("руб", "rur", "usd", "eur", "$", "€", "k ", "k$", "k€", "₽")
+    for raw_line in text.splitlines():
+        line = " ".join(raw_line.strip().split())
+        if not line:
+            continue
+        lower = line.casefold()
+        if "зарплат" in lower or "salary" in lower or "compensation" in lower:
+            return cleanup_salary_line(line)
+        if any(marker in lower for marker in currency_markers) and re.search(r"\d", line):
+            if re.search(r"(от|до|from|up to|\d[\d\s.,]{2,}\s*[-–—]\s*\d)", lower):
+                return cleanup_salary_line(line)
+    return None
+
+
+def cleanup_salary_line(line: str) -> str:
+    cleaned = re.sub(r"^(зарплата|salary|compensation)\s*[:\-]\s*", "", line, flags=re.IGNORECASE)
+    return cleaned.strip(" -")
+
+
+def build_dedupe_key(text: str, result: Optional[AnalysisResult]) -> Optional[str]:
+    if result is None:
+        return None
+
+    company = normalize_company_name(result.company_name)
+    title = normalize_title_for_dedupe(result.vacancy_title or first_non_empty_line(text))
+    if not company and not title:
+        return None
+    return f"{company}||{title}"
+
+
+def normalize_company_name(company_name: Optional[str]) -> str:
+    if not company_name:
+        return ""
+    normalized = company_name.casefold()
+    normalized = normalized.replace("ё", "е")
+    normalized = re.sub(r"[^a-zа-я0-9\s]", " ", normalized)
+    normalized = re.sub(r"\b(ооо|ao|ао|ип|llc|ltd|inc|gmbh|jsc)\b", " ", normalized)
+    return " ".join(normalized.split())
+
+
+def normalize_title_for_dedupe(title: Optional[str]) -> str:
+    if not title:
+        return ""
+    normalized = title.casefold().replace("ё", "е")
+    replacements = {
+        "проджект менеджер": "project manager",
+        "менеджер проектов": "project manager",
+        "руководитель проектов": "project manager",
+        "delivery manager": "project manager",
+        "project manager": "project manager",
+        "pm": "project manager",
+    }
+    for source, target in replacements.items():
+        normalized = normalized.replace(source, target)
+    normalized = re.sub(r"\b(project manager|в|at|in|for)\b", " ", normalized)
+    normalized = re.sub(r"[^a-zа-я0-9\s]", " ", normalized)
+    return " ".join(normalized.split())

@@ -45,6 +45,7 @@ class VacancyAnalyzer:
         if self.client and self.config.llm.enabled:
             try:
                 result = await self._analyze_with_llm(text)
+                result = self._apply_company_domain_inference(result, text)
                 result = self._apply_product_domain_rule(result, text)
                 result = self._apply_pm_publication_rule(result, text)
                 result = self._apply_keyword_fit_penalties(result, text)
@@ -52,6 +53,7 @@ class VacancyAnalyzer:
             except Exception:
                 logger.exception("LLM analysis failed, falling back to keyword heuristic")
         result = self._analyze_with_keywords(text)
+        result = self._apply_company_domain_inference(result, text)
         result = self._apply_product_domain_rule(result, text)
         result = self._apply_pm_publication_rule(result, text)
         result = self._apply_keyword_fit_penalties(result, text)
@@ -225,7 +227,7 @@ class VacancyAnalyzer:
         normalized = normalize(text)
         if not is_product_role_text(normalized):
             return result
-        if has_crypto_web3_domain(normalized):
+        if has_crypto_web3_domain(normalized) or is_crypto_web3_label(result.domain_label):
             return result
 
         reason = result.reason
@@ -257,6 +259,34 @@ class VacancyAnalyzer:
             match_percentage=capped_score,
             responsibilities_summary=result.responsibilities_summary,
             mismatches=tuple(mismatches),
+        )
+
+    def _apply_company_domain_inference(self, result: AnalysisResult, text: str) -> AnalysisResult:
+        if result.domain_label or not result.company_name:
+            return result
+
+        inferred_domain = infer_domain_from_company(result.company_name, text)
+        if inferred_domain is None:
+            return result
+
+        return AnalysisResult(
+            accepted=result.accepted,
+            is_vacancy=result.is_vacancy,
+            role_match=result.role_match,
+            domain_match=result.domain_match,
+            level_match=result.level_match,
+            reason=result.reason,
+            matched_role=result.matched_role,
+            matched_domain=result.matched_domain,
+            matched_level=result.matched_level,
+            resume_summary=result.resume_summary,
+            resume_fit=result.resume_fit,
+            vacancy_title=result.vacancy_title,
+            company_name=result.company_name,
+            domain_label=inferred_domain,
+            match_percentage=result.match_percentage,
+            responsibilities_summary=result.responsibilities_summary,
+            mismatches=result.mismatches,
         )
 
     def _apply_pm_publication_rule(self, result: AnalysisResult, text: str) -> AnalysisResult:
@@ -472,6 +502,38 @@ def has_crypto_web3_domain(normalized_text: str) -> bool:
         "blockchain",
     ]
     return any(term in normalized_text for term in domain_terms)
+
+
+def is_crypto_web3_label(domain_label: Optional[str]) -> bool:
+    if not domain_label:
+        return False
+    normalized = normalize(domain_label)
+    return any(term in normalized for term in ("crypto", "web3", "blockchain", "блокчейн"))
+
+
+def infer_domain_from_company(company_name: str, text: str) -> Optional[str]:
+    normalized_company = normalize(company_name)
+    normalized_text = normalize(text)
+    combined = f"{normalized_company} {normalized_text}"
+
+    company_rules: list[tuple[tuple[str, ...], str]] = [
+        (("agima",), "Digital / Integrator"),
+        (("ton", "the open network"), "Web3"),
+        (("consensys", "metamask", "chainalysis", "binance", "bybit", "okx", "ledger"), "Crypto"),
+        (("mercuryo", "moonpay", "ramp network", "transak"), "Crypto Payments"),
+        (("tbank", "t-bank", "тинькофф", "tinkoff", "vtb", "втб", "sber", "сбер", "alfabank", "альфа"), "Fintech"),
+        (("pay", "payment", "payments", "psp", "merchant", "acquiring"), "Payments"),
+        (("web3", "blockchain", "crypto", "defi", "wallet", "exchange"), "Web3"),
+        (("fintech", "bank", "банк", "neobank", "factoring", "финтех"), "Fintech"),
+        (("game", "games", "gamedev", "gaming"), "GameDev"),
+        (("mobile", "ios", "android", "app store", "google play"), "Mobile"),
+        (("integrator", "agency", "digital", "студия", "интегратор", "разработка сайтов"), "Digital / Integrator"),
+    ]
+
+    for keywords, label in company_rules:
+        if any(keyword in combined for keyword in keywords):
+            return label
+    return None
 
 
 def is_preferred_location(normalized_text: str) -> bool:

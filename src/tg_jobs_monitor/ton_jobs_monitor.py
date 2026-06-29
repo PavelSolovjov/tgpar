@@ -15,7 +15,7 @@ from tg_jobs_monitor.analyzer import AnalysisResult, VacancyAnalyzer
 from tg_jobs_monitor.bot_publisher import BotPublisher
 from tg_jobs_monitor.settings import AppConfig, EnvSettings
 from tg_jobs_monitor.storage import ProcessedRecord, Storage
-from tg_jobs_monitor.web_monitor import format_publication, is_publishable_match
+from tg_jobs_monitor.web_monitor import build_dedupe_key, format_publication, is_publishable_match
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +227,20 @@ class TonJobsMonitor:
             return
 
         result = await self.analyzer.analyze(job.text)
+        dedupe_key = build_dedupe_key(job.text, result)
+        duplicate = self.storage.find_similar_vacancy(dedupe_key)
+        if duplicate is not None:
+            self._save_rejected(
+                job,
+                text_hash,
+                (
+                    "Отклонено: похоже на дубль уже обработанной вакансии "
+                    f"из {duplicate['source']}/{duplicate['message_id']}."
+                ),
+                result=result,
+            )
+            return
+
         reason = result.reason
         if result.accepted and not should_publish:
             reason += " Не опубликовано: первый проход, publish_on_first_run=false."
@@ -250,6 +264,9 @@ class TonJobsMonitor:
                 accepted=result.accepted,
                 reason=reason,
                 forwarded_message_id=forwarded_message_id,
+                vacancy_title=result.vacancy_title,
+                company_name=result.company_name,
+                dedupe_key=dedupe_key,
             )
         )
 
@@ -264,7 +281,14 @@ class TonJobsMonitor:
         text = format_publication(job, result, reason)
         return await self.publisher.send_text(self.config.destination_channel, text)
 
-    def _save_rejected(self, job: TonJob, text_hash: str, reason: str) -> None:
+    def _save_rejected(
+        self,
+        job: TonJob,
+        text_hash: str,
+        reason: str,
+        *,
+        result: AnalysisResult | None = None,
+    ) -> None:
         logger.info("%s/%s: %s", job.source, job.message_id, reason)
         self.storage.save(
             ProcessedRecord(
@@ -273,6 +297,9 @@ class TonJobsMonitor:
                 text_hash=text_hash,
                 accepted=False,
                 reason=reason,
+                vacancy_title=result.vacancy_title if result else None,
+                company_name=result.company_name if result else None,
+                dedupe_key=build_dedupe_key(job.text, result) if result else None,
             )
         )
 
