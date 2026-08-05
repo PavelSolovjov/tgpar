@@ -3,7 +3,7 @@ recent_messages_limit: 25
 request_delay_seconds: 1.0
 request_delay_jitter_seconds: 0.5
 publish_on_first_run: false
-dry_run: false
+dry_run: true
 
 # Public Telegram channel usernames. The scraper reads https://t.me/s/<channel>.
 source_channels:
